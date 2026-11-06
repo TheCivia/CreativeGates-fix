@@ -135,10 +135,11 @@ class EngineMain : Listener {
 
     private fun runTravelCommands(player: Player, gate: Gate) {
         val config = CreativeGate.configuration
-        if (config.travelCommands.isEmpty()) return
-
         val creator = gate.resolveCreator()
         val ownGate = creator != null && creator == player.uniqueId
+        Analytika.track(player, "portal.pouzit", "vlastni" to if (ownGate) "1" else "0")
+
+        if (config.travelCommands.isEmpty()) return
         if (ownGate && !config.travelCommandsOwnGates) return
 
         val creatorName = creator?.let { Bukkit.getOfflinePlayer(it).name } ?: ""
