@@ -267,9 +267,10 @@ class EngineMain : Listener {
             if (isGateNearby(clickedBlock)) {
                 val reqMaterial = TxtUtil.getMaterialName(material)
                 val blockMaterial = TxtUtil.getMaterialName(clickedBlock.type)
+                // MiniMessage tag names must be lowercase; "reqMaterial" threw and the message was never sent.
                 val tagResolver = arrayOf<TagResolver>(
-                    Placeholder.unparsed("reqMaterial", reqMaterial),
-                    Placeholder.unparsed("blockMaterial", blockMaterial)
+                    Placeholder.unparsed("reqmaterial", reqMaterial),
+                    Placeholder.unparsed("blockmaterial", blockMaterial)
                 )
                 TxtUtil.sendTranslation(player, config.noGateMessage, tagResolver)
             }
@@ -364,7 +365,7 @@ class EngineMain : Listener {
         if (currentItemMeta == null || !currentItemMeta.hasDisplayName()) {
             val reqMaterial = TxtUtil.getMaterialName(material)
             val tagResolver = arrayOf<TagResolver>(
-                Placeholder.unparsed("reqMaterial", reqMaterial),
+                Placeholder.unparsed("reqmaterial", reqMaterial),
                 Placeholder.unparsed("material", reqMaterial)
             )
             TxtUtil.sendTranslation(player, config.mustNameItemMessage, tagResolver)

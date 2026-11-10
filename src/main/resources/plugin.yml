@@ -1,5 +1,5 @@
 name: CreativeGate
-version: '0.1.4-thecivia'
+version: '0.1.5-thecivia'
 main: org.tamasoft.creativegate.CreativeGate
 api-version: 1.19
 softdepend: [ PvPManager ]
