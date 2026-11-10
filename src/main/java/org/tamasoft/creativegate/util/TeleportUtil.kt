@@ -82,7 +82,14 @@ object TeleportUtil {
             if (!teleportee.isOnline || teleportee.isDead) {
                 return@thenCompose CompletableFuture.completedFuture(false)
             }
-            if (!isSafeExit(location)) {
+            // The stored exit is the block the creator's feet were in. Standing on a path, farmland, slab or
+            // soul sand stores that (solid) block itself, so such exits get a second try one block higher.
+            val target = when {
+                isSafeExit(location) -> location
+                isSafeExit(location.clone().add(0.0, 1.0, 0.0)) -> location.clone().add(0.0, 1.0, 0.0)
+                else -> null
+            }
+            if (target == null) {
                 TxtUtil.sendTranslation(teleportee, CreativeGate.configuration.exitBlockedMessage)
                 return@thenCompose CompletableFuture.completedFuture(false)
             }
@@ -91,7 +98,7 @@ object TeleportUtil {
             teleportee.eject()
             teleportee.vehicle?.eject()
 
-            teleportee.teleportAsync(location, PlayerTeleportEvent.TeleportCause.PLUGIN)
+            teleportee.teleportAsync(target, PlayerTeleportEvent.TeleportCause.PLUGIN)
         }
     }
 }
