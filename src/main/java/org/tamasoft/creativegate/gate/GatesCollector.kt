@@ -67,10 +67,36 @@ object GatesCollector {
 
     fun getByCreator(creator: UUID): List<Gate> = byCreator[creator]?.toList() ?: emptyList()
 
-    /** Creator of the oldest gate in the network, or null when the network is empty. */
+    /**
+     * Creator of the oldest gate with a known creator in the network, or null when the network has no such gate.
+     * Gates without a creator (old gates.json files) are skipped, otherwise one such gate at the start of the
+     * chain would leave the whole network without an owner.
+     */
     fun getNetworkOwner(networkId: String): UUID? {
-        val oldest = gates.filter { it.networkId == networkId }.minByOrNull { it.creationTimeMillis } ?: return null
-        return effectiveCreator(oldest)
+        return getByNetworkId(networkId).firstNotNullOfOrNull { effectiveCreator(it) }
+    }
+
+    fun networkExists(networkId: String): Boolean = gates.any { it.networkId == networkId }
+
+    /** True when the block is a frame or portal block of any registered gate. */
+    fun isPartOfGate(block: Block): Boolean = Frames[block].isNotEmpty() || Portals[block] != null
+
+    /**
+     * Networks that already have gates of several creators (made before networkOwnership was enforced). Their
+     * gates keep working; only the owner (creator of the oldest gate) can add new ones. Logged so the server
+     * owner can review them.
+     */
+    private fun logMixedNetworks() {
+        gates.groupBy { it.networkId }.forEach { (networkId, list) ->
+            val creatorsInNetwork = list.mapNotNull { effectiveCreator(it) }.toSet()
+            if (creatorsInNetwork.size > 1) {
+                Bukkit.getLogger().warning(
+                    "[CreativeGate] Network '$networkId' has gates of ${creatorsInNetwork.size} creators " +
+                        "($creatorsInNetwork). Owner is ${getNetworkOwner(networkId)}; existing gates keep working, " +
+                        "only the owner can add new ones."
+                )
+            }
+        }
     }
 
     /** True when at least one gate has portal blocks in the given world. Cheap pre-check for hot block events. */
@@ -206,6 +232,7 @@ object GatesCollector {
             register(gate)
         }
         dirty = false
+        logMixedNetworks()
     }
 
     /**

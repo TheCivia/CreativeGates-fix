@@ -29,7 +29,16 @@ class Config {
 
     // When true, only the creator of the oldest gate in a network (or players with
     // creativegates.network.bypass) can add further gates to that network.
-    val networkOwnership: Boolean = false
+    // Default is true since 0.1.4: with false anyone can join (and hijack) a network by naming a clock like it.
+    val networkOwnership: Boolean = true
+
+    // A gate cannot be entered for this many seconds after the player took damage (0 disables the check).
+    // Players tagged by PvPManager can never enter. Bypass: creativegates.combat.bypass
+    val combatBlockSeconds: Int = 10
+
+    // Before a gate is created, a BlockPlaceEvent is fired for every portal block so protection plugins
+    // (Lands, WorldGuard) can deny gates in places where the player cannot build.
+    val checkBuildPermission: Boolean = true
 
 
     // Translations
@@ -60,4 +69,9 @@ class Config {
     val exitEnabledMessage: String = "<g>exit enabled"
     val exitDisabledMessage: String = "<b>exit disabled"
     val gateNoDestinationMessage: String = "<i>This gate does not seem to lead anywhere."
+    val gateCombatMessage: String = "<red>Bránou nemůžeš projít během boje ani těsně po zranění."
+    val gateModeNotAllowedMessage: String = "<red>Režim brány může měnit jen její tvůrce nebo hráč, který tu smí stavět."
+    val gateBuildDeniedMessage: String = "<red>Tady bránu postavit nemůžeš."
+    val frameSharedMessage: String = "<red>Rám brány nesmí být součástí jiné brány."
+    val exitBlockedMessage: String = "<red>Výstup z brány je zablokovaný nebo nebezpečný."
 }

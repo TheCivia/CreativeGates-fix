@@ -53,6 +53,7 @@ class CreativeGate : JavaPlugin(), Listener {
         // Synchronous: the server may stop right after onDisable returns.
         GatesCollector.saveGates(gatesFile, false)
         TeleportUtil.clear()
+        org.tamasoft.creativegate.util.CombatUtil.clear()
         logger.info { "Disabled" }
     }
 }

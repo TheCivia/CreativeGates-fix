@@ -16,6 +16,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.block.*
 import org.bukkit.event.entity.CreatureSpawnEvent
 import org.bukkit.event.entity.EntityChangeBlockEvent
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.entity.EntityPortalEvent
 import org.bukkit.event.player.*
@@ -55,6 +56,7 @@ class EngineMain : Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     fun stabilizePortalContent(event: BlockPlaceEvent) {
+        if (State.isProbing) return
         stabilizePortalContentBlock(event.block, event)
     }
 
@@ -129,8 +131,28 @@ class EngineMain : Listener {
         // ... and the player is alive ...
         if (player.isDead) return
 
+        // ... and is not in a fight (PvPManager tag) or freshly damaged: a gate must not be an escape from combat ...
+        if (CombatUtil.isBlocked(player)) {
+            if (CombatUtil.shouldSendMessage(player)) {
+                TxtUtil.sendTranslation(player, CreativeGate.configuration.gateCombatMessage)
+            }
+            return
+        }
+
         // ... then transport the player. Travel commands run only once the player has really arrived.
         gate.transport(player) { runTravelCommands(player, gate) }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun rememberDamage(event: EntityDamageEvent) {
+        val player = event.entity as? Player ?: return
+        if (event.finalDamage <= 0.0) return
+        CombatUtil.markDamaged(player)
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun forgetPlayer(event: PlayerQuitEvent) {
+        CombatUtil.forget(event.player)
     }
 
     private fun runTravelCommands(player: Player, gate: Gate) {
@@ -297,6 +319,11 @@ class EngineMain : Listener {
                     TxtUtil.sendTranslation(player, config.onlyOwnerCanChangeMessage)
                 }
             } else if (material == config.materialMode) {
+                // Anyone with a blaze rod used to be able to switch off enter/exit of any gate.
+                if (!mayChangeMode(player, currentGate, hand)) {
+                    TxtUtil.sendTranslation(player, config.gateModeNotAllowedMessage)
+                    continue
+                }
                 currentGate.toggleMode()
                 val enter: String =
                     if (currentGate.enterEnabled) config.enterEnabledMessage else config.enterDisabledMessage
@@ -310,6 +337,15 @@ class EngineMain : Listener {
                 TxtUtil.sendTranslation(player, config.gateNowHasMessage, resolver)
             }
         }
+    }
+
+    /** The creator, players with creativegates.mode.bypass, and players who may build where the gate stands. */
+    private fun mayChangeMode(player: Player, gate: Gate, hand: EquipmentSlot): Boolean {
+        if (gate.isCreator(player)) return true
+        if (player.hasPermission("creativegates.mode.bypass")) return true
+        if (!CreativeGate.configuration.checkBuildPermission) return false
+        val frame = gate.frameBlocks?.firstOrNull() ?: return false
+        return BuildUtil.canBuild(player, frame, frame, hand)
     }
 
     private fun createGate(event: PlayerInteractEvent, player: Player, clickedBlock: Block, currentItem: ItemStack, material: Material) {
@@ -339,12 +375,13 @@ class EngineMain : Listener {
 
         // Anyone naming an item like an existing network used to join that network and become a destination of its
         // gates. With networkOwnership enabled only the owner (creator of the oldest gate) can extend a network.
-        if (config.networkOwnership && !player.hasPermission("creativegates.network.bypass")) {
-            val owner = GatesCollector.getNetworkOwner(networkId)
-            if (owner != null && owner != player.uniqueId) {
-                TxtUtil.sendTranslation(player, config.networkTakenMessage)
-                return
-            }
+        // A network whose gates have no known creator (old data) has no owner and is closed to everyone but bypass.
+        if (config.networkOwnership && !player.hasPermission("creativegates.network.bypass")
+            && GatesCollector.networkExists(networkId)
+            && GatesCollector.getNetworkOwner(networkId) != player.uniqueId
+        ) {
+            TxtUtil.sendTranslation(player, config.networkTakenMessage)
+            return
         }
 
         val gateFloodInfo: FloodUtil.FloodInfo? = FloodUtil.getGateFloodInfo(clickedBlock, event.blockFace)
@@ -362,6 +399,22 @@ class EngineMain : Listener {
             val reqBlocks = MaterialCountUtil.desc(config.blocksRequired)
             val tagResolver = arrayOf<TagResolver>(Placeholder.unparsed("blocks", reqBlocks))
             TxtUtil.sendTranslation(player, config.frameMustContainMessage, tagResolver)
+            return
+        }
+
+        // A frame block shared with another gate let two emerald blocks serve any number of gates, and breaking it
+        // destroyed gates of other players. The content of another gate (portal/water) must not act as a frame either.
+        if (frameBlocks.any { GatesCollector.isPartOfGate(it) }) {
+            TxtUtil.sendTranslation(player, config.frameSharedMessage)
+            return
+        }
+
+        // fill() places the content without any event. Ask protection plugins first, and before the gate is
+        // registered: afterwards our own listener would cancel every place event inside the portal.
+        if (config.checkBuildPermission
+            && !BuildUtil.canBuildAll(player, portalBlocks, clickedBlock, event.hand ?: EquipmentSlot.HAND)
+        ) {
+            TxtUtil.sendTranslation(player, config.gateBuildDeniedMessage)
             return
         }
 
