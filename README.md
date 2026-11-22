@@ -14,7 +14,7 @@ Fork pluginu **CreativeGate** (Tamasoft): portály mezi branami postavenými hr�
   - 0.1.4: `networkOwnership` je výchozí `true` (vlastník sítě je tvůrce nejstarší brány se známým tvůrcem, síť bez známého tvůrce je uzavřená), režim brány (blaze rod) přepne jen tvůrce, hráč s `creativegates.mode.bypass` nebo hráč, který smí na místě stavět, vstup do brány je zakázaný při combat tagu PvPManageru (volitelná závislost) a `combatBlockSeconds` (10) sekund po zranění (`creativegates.combat.bypass`), před vytvořením brány se ověří ochrana pozemků (`checkBuildPermission`, BlockPlaceEvent pro Lands a WorldGuard) a rám nesmí patřit jiné bráně, výstup se kontroluje až po načtení chunku (průchozí, bez lávy, ohně a jiných zraňujících bloků),
   - 0.1.5: hodiny beze jména už nekončí výjimkou v MiniMessage zprávě,
   - 0.1.6: výstup v pevném bloku (cestička, pole, půlblok) se zkusí o blok výš,
-  - volitelná událost pro analytiku po průchodu bránou (plugin `CiviaAnalytics`, když neběží, nic se neděje).
+  - volitelná událost pro analytický plugin po průchodu bránou (volání přes reflexi, bez pluginu se nic neděje).
 
 ## Build
 Na větvi `fix/review-0.1.3` (0.1.6-thecivia, nebo `feature/badges-hooks-and-fixes` pro 0.1.2):
